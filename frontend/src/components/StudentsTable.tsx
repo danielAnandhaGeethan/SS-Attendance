@@ -2,23 +2,23 @@ import type { Student } from "../types/domain";
 
 export default function StudentsTable({ students }: { students: Student[] }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
-      <table className="w-full text-sm">
+    <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto">
+      <table className="w-full text-sm min-w-[480px]">
         <thead className="bg-slate-50 text-slate-500 text-left">
           <tr>
-            <th className="px-4 py-2 font-medium">ID</th>
-            <th className="px-4 py-2 font-medium">Name</th>
-            <th className="px-4 py-2 font-medium">Section</th>
-            <th className="px-4 py-2 font-medium">Contact</th>
+            <th className="px-3 sm:px-4 py-2 font-medium whitespace-nowrap">ID</th>
+            <th className="px-3 sm:px-4 py-2 font-medium whitespace-nowrap">Name</th>
+            <th className="px-3 sm:px-4 py-2 font-medium whitespace-nowrap">Section</th>
+            <th className="px-3 sm:px-4 py-2 font-medium whitespace-nowrap">Contact</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
           {students.map((s) => (
             <tr key={s.id}>
-              <td className="px-4 py-2 text-slate-400">{s.id}</td>
-              <td className="px-4 py-2 text-slate-800">{s.fullName}</td>
-              <td className="px-4 py-2 text-slate-600">{s.classSection}</td>
-              <td className="px-4 py-2 text-slate-600">{s.contactNo}</td>
+              <td className="px-3 sm:px-4 py-2 text-slate-400 whitespace-nowrap">{s.id}</td>
+              <td className="px-3 sm:px-4 py-2 text-slate-800 whitespace-nowrap">{s.fullName}</td>
+              <td className="px-3 sm:px-4 py-2 text-slate-600 whitespace-nowrap">{s.classSection}</td>
+              <td className="px-3 sm:px-4 py-2 text-slate-600 whitespace-nowrap">{s.contactNo}</td>
             </tr>
           ))}
           {students.length === 0 && (

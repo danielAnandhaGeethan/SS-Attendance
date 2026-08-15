@@ -116,9 +116,9 @@ export default function AttendanceMarking() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl font-semibold text-slate-800">Attendance</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-lg sm:text-xl font-semibold text-slate-800">Attendance</h1>
           {capabilities.targetTypeSelector.visible && (
             <select
               className="border border-slate-300 rounded-md px-2 py-1.5 text-sm"
@@ -131,10 +131,10 @@ export default function AttendanceMarking() {
             </select>
           )}
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {targetConfig.classSectionSelectorVisible && (
             <select
-              className="border border-slate-300 rounded-md px-2 py-1.5 text-sm"
+              className="flex-1 sm:flex-none border border-slate-300 rounded-md px-2 py-1.5 text-sm"
               value={selectedSection}
               onChange={(e) => handleSectionChange(e.target.value)}
             >
@@ -145,7 +145,7 @@ export default function AttendanceMarking() {
           )}
           <input
             type="date"
-            className="border border-slate-300 rounded-md px-2 py-1.5 text-sm"
+            className="flex-1 sm:flex-none border border-slate-300 rounded-md px-2 py-1.5 text-sm"
             value={selectedDate}
             onChange={(e) => handleDateChange(e.target.value)}
           />
@@ -173,17 +173,20 @@ export default function AttendanceMarking() {
             {roster.map((person) => {
               const mark = markFor(person.id);
               return (
-                <div key={person.id} className="flex items-center justify-between px-4 py-3">
+                <div
+                  key={person.id}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3 sm:px-4 py-3"
+                >
                   <div>
-                    <div className="text-slate-800 font-medium">{person.fullName}</div>
+                    <div className="text-slate-800 font-medium text-sm sm:text-base">{person.fullName}</div>
                     <div className="text-xs text-slate-400">{person.id}</div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     {targetConfig.statusOptions.map((opt) => (
                       <button
                         key={opt.value}
                         onClick={() => setMark(person.id, opt.value)}
-                        className={`px-3 py-1.5 rounded-md text-sm font-medium border ${
+                        className={`flex-1 sm:flex-none px-3 py-1.5 rounded-md text-sm font-medium border ${
                           mark === opt.value ? statusStyles[opt.value] : unselectedStyle
                         }`}
                       >
@@ -201,7 +204,7 @@ export default function AttendanceMarking() {
             )}
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <span className="text-sm text-slate-500">
               {markedCount} / {roster.length} marked · {CURRENT_ACADEMIC_YEAR}
             </span>
@@ -210,7 +213,7 @@ export default function AttendanceMarking() {
               <button
                 onClick={handleSubmit}
                 disabled={roster.length === 0}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex-1 sm:flex-none px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Submit
               </button>

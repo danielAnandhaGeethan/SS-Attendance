@@ -23,8 +23,10 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold text-slate-800">Welcome, {currentUser.fullName}</h1>
-      <p className="text-slate-600">
+      <h1 className="text-lg sm:text-xl font-semibold text-slate-800 break-words">
+        Welcome, {currentUser.fullName}
+      </h1>
+      <p className="text-sm sm:text-base text-slate-600">
         You're assigned to {mySections.length} section{mySections.length === 1 ? "" : "s"}:
       </p>
       <ul className="flex flex-wrap gap-2">
@@ -47,8 +49,8 @@ function BroadOverview() {
   return (
     <div className="space-y-8">
       <div className="space-y-4">
-        <h1 className="text-xl font-semibold text-slate-800">School-wide overview</h1>
-        <div className="grid grid-cols-3 gap-4">
+        <h1 className="text-lg sm:text-xl font-semibold text-slate-800">School-wide overview</h1>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
           <StatCard label="Total students" value={mockStudents.length} />
           <StatCard label="Total staff" value={mockTeachers.length - 1} />
           <StatCard label="Today's attendance %" value="—" />
@@ -60,15 +62,15 @@ function BroadOverview() {
       </div>
 
       <div className="space-y-3">
-        <h2 className="text-lg font-semibold text-slate-800">Teachers</h2>
+        <h2 className="text-base sm:text-lg font-semibold text-slate-800">Teachers</h2>
         <TeachersTable teachers={mockTeachers} />
       </div>
 
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-800">Students</h2>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <h2 className="text-base sm:text-lg font-semibold text-slate-800">Students</h2>
           <select
-            className="border border-slate-300 rounded-md px-2 py-1.5 text-sm"
+            className="w-full sm:w-auto border border-slate-300 rounded-md px-2 py-1.5 text-sm"
             value={sectionFilter}
             onChange={(e) => setSectionFilter(e.target.value)}
           >
@@ -85,9 +87,9 @@ function BroadOverview() {
 
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-lg p-4">
-      <div className="text-sm text-slate-500">{label}</div>
-      <div className="text-2xl font-semibold text-slate-800 mt-1">{value}</div>
+    <div className="bg-white border border-slate-200 rounded-lg p-3 sm:p-4">
+      <div className="text-xs sm:text-sm text-slate-500">{label}</div>
+      <div className="text-xl sm:text-2xl font-semibold text-slate-800 mt-1">{value}</div>
     </div>
   );
 }

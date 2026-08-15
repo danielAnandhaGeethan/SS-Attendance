@@ -32,8 +32,8 @@ export default function AppLayout() {
   return (
     <div className="min-h-screen bg-slate-50">
       <header className="bg-white border-b border-slate-200">
-        <div className="max-w-5xl mx-auto px-4 py-3 grid grid-cols-3 items-center">
-          <div className="flex items-center gap-1 justify-self-start relative" ref={menuRef}>
+        <div className="max-w-5xl mx-auto px-3 sm:px-4 py-3 flex flex-wrap items-center gap-y-2 gap-x-3 justify-between">
+          <div className="flex items-center gap-1 relative order-1" ref={menuRef}>
             <NavLink to="/" end className={navLinkClasses}>
               Dashboard
             </NavLink>
@@ -71,23 +71,25 @@ export default function AppLayout() {
             )}
           </div>
 
-          <span className="justify-self-center font-semibold text-slate-800 whitespace-nowrap">
+          <span className="order-3 sm:order-2 w-full sm:w-auto text-center font-semibold text-slate-800 text-sm sm:text-base sm:whitespace-nowrap">
             Sunday School Attendance
           </span>
 
-          <div className="justify-self-end flex items-center gap-3">
+          <div className="order-2 sm:order-3 flex items-center gap-2 sm:gap-3">
             <div className="flex flex-col items-end leading-tight">
-              <span className="text-sm text-slate-500">{currentUser.fullName}</span>
+              <span className="text-xs sm:text-sm text-slate-500 truncate max-w-[8rem] sm:max-w-none">
+                {currentUser.fullName}
+              </span>
               <span className="text-xs text-gray-600">({roleLabel})</span>
             </div>
-            <button onClick={logout} className="text-sm text-blue-600 hover:underline">
+            <button onClick={logout} className="text-xs sm:text-sm text-blue-600 hover:underline whitespace-nowrap">
               Sign out
             </button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 py-6">
+      <main className="max-w-5xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
         <Outlet />
       </main>
     </div>
