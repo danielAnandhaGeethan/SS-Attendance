@@ -6,6 +6,7 @@ import TeachersTable from "../components/TeachersTable";
 
 export default function Dashboard() {
   const { currentUser } = useMockAuth();
+  if (!currentUser) return null;
 
   // Volunteers have the same access as the Superintendent - both get the
   // full school-wide view, not the narrower "your assigned sections" view

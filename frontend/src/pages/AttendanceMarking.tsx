@@ -25,27 +25,29 @@ const statusStyles: Record<AttendanceMark, string> = {
 const unselectedStyle = "border-slate-300 text-slate-600 hover:bg-slate-50";
 
 export default function AttendanceMarking() {
-  const { currentUser } = useMockAuth();
+  const { currentUser: user } = useMockAuth();
   const [selectedDate, setSelectedDate] = useState(nextOrLastSunday());
   const [saved, setSaved] = useState(false);
+
+  if (!user) return null;
 
   // Everything below reads from this one "API response" - no role checks
   // happen anywhere in this component. See mocks/attendanceMarkingApi.ts.
   const capabilities = useMemo(
-    () => getAttendanceMarkingCapabilities(currentUser),
-    [currentUser]
+    () => getAttendanceMarkingCapabilities(user),
+    [user]
   );
 
   const [targetType, setTargetType] = useState<AttendanceTargetType>(capabilities.defaultTargetType);
   const targetConfig = capabilities.perTargetType[targetType];
 
   const availableSections = targetConfig.classSectionSelectorVisible
-    ? getAvailableClassSections(currentUser, targetType)
+    ? getAvailableClassSections(user, targetType)
     : [];
   const [selectedSection, setSelectedSection] = useState(availableSections[0] ?? "");
 
   const roster = getRoster(
-    currentUser,
+    user,
     targetType,
     targetConfig.classSectionSelectorVisible ? selectedSection : undefined
   );
@@ -78,9 +80,10 @@ export default function AttendanceMarking() {
   }
 
   function handleTargetTypeChange(next: AttendanceTargetType) {
+    if (!user) return;
     setTargetType(next);
     const nextSections = capabilities.perTargetType[next].classSectionSelectorVisible
-      ? getAvailableClassSections(currentUser, next)
+      ? getAvailableClassSections(user, next)
       : [];
     setSelectedSection(nextSections[0] ?? "");
     setDraft({});
