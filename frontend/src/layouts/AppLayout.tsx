@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { NavLink, Navigate, Outlet } from "react-router-dom";
-import { useMockAuth } from "../context/MockAuthContext";
+import { useAuth } from "../context/AuthContext";
 
 const navLinkClasses = ({ isActive }: { isActive: boolean }) =>
   `block px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap ${
@@ -8,7 +8,7 @@ const navLinkClasses = ({ isActive }: { isActive: boolean }) =>
   }`;
 
 export default function AppLayout() {
-  const { currentUser, logout } = useMockAuth();
+  const { currentUser, teachersLoading, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -22,6 +22,10 @@ export default function AppLayout() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Wait for the teacher list before deciding to bounce to /login, so a
+  // page reload with a still-valid session cookie doesn't flash-redirect
+  // while that list is in flight.
+  if (teachersLoading) return null;
   if (!currentUser) return <Navigate to="/login" replace />;
 
   // Volunteers have the same access as the Superintendent - both can view

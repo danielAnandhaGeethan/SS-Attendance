@@ -1,3 +1,5 @@
+from typing import Literal
+
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -20,6 +22,17 @@ attendance_service = AttendanceService(supabase_client=supabase)
 
 class LoginRequest(BaseModel):
     name: str
+
+
+class AttendanceMarkIn(BaseModel):
+    person_id: str
+    date: str  # "YYYY-MM-DD"
+    mark: Literal["P", "A", "OD"]
+
+
+class AttendanceSubmitRequest(BaseModel):
+    academic_year: str
+    marks: list[AttendanceMarkIn]
 
 
 @app.post("/login")
@@ -62,6 +75,24 @@ def list_students_by_teacher_path(teacher_id: str, limit: int = 100):
         if isinstance(rows, dict) and "teachers" in rows and "students" in rows:
             return rows
         return {"students": rows}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/attendance")
+def get_attendance(person_ids: str, academic_year: str):
+    ids = [p for p in person_ids.split(",") if p]
+    try:
+        return {"attendance": attendance_service.get_attendance(ids, academic_year)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/attendance")
+def submit_attendance(payload: AttendanceSubmitRequest):
+    try:
+        attendance_service.upsert_marks(payload.academic_year, [m.model_dump() for m in payload.marks])
+        return {"success": True}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

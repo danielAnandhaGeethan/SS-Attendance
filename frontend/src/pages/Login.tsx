@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useMockAuth } from "../context/MockAuthContext";
+import { useAuth } from "../context/AuthContext";
 import type { Teacher } from "../types/domain";
 
 export default function Login() {
-  const { currentUser, findMatches, login } = useMockAuth();
+  const { currentUser, teachersLoading, teachersError, findMatches, login } = useAuth();
   const navigate = useNavigate();
 
   const [name, setName] = useState("");
@@ -18,6 +18,15 @@ export default function Login() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    if (teachersLoading) {
+      setError("Still loading, please try again in a moment.");
+      return;
+    }
+    if (teachersError) {
+      setError("Couldn't reach the server. Please try again later.");
+      return;
+    }
 
     const found = findMatches(name);
     if (found.length === 0) {

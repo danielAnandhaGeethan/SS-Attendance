@@ -1,17 +1,16 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import type { Teacher } from "../types/domain";
-import { mockTeachers } from "../mocks/data";
+import { useTeachers } from "../api/hooks";
 import { deleteCookie, getCookie, setCookie } from "../utils/cookies";
 
-// Stand-in for real Supabase Auth + backend session lookup. The real
-// version will authenticate via Supabase Auth and look up the matching
-// teachers row; this mock instead matches by name against the mock data,
-// since no backend/login flow exists yet. Replace once the backend is
-// wired up.
+// Real auth, backed by the backend's teacher list. The backend's own
+// POST /login only ever returns the *first* name match, which breaks the
+// "which section do you belong to" disambiguation the login screen needs
+// for teachers who share a name (see mocks data's Grace Peters comment,
+// preserved in this app's seed data) - so matching happens here instead,
+// against the full teacher list already fetched for the app. Revisit this
+// once /login itself returns every match.
 
-// Session cookie: stores { teacherId, expiresAt } so a page reload can
-// restore the logged-in user, and self-expires 15 minutes after login
-// regardless of activity (no sliding renewal).
 const SESSION_COOKIE = "session";
 const SESSION_DURATION_MS = 15 * 60 * 1000;
 
@@ -33,18 +32,21 @@ function readSession(): StoredSession | null {
   }
 }
 
-interface MockAuthContextValue {
+interface AuthContextValue {
   currentUser: Teacher | null;
+  teachersLoading: boolean;
+  teachersError: string | null;
   findMatches: (name: string) => Teacher[];
   login: (teacherId: string) => void;
   logout: () => void;
 }
 
-const MockAuthContext = createContext<MockAuthContextValue | null>(null);
+const AuthContext = createContext<AuthContextValue | null>(null);
 
-export function MockAuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const { data: teachers, loading: teachersLoading, error: teachersError } = useTeachers();
   const [currentUserId, setCurrentUserId] = useState<string | null>(() => readSession()?.teacherId ?? null);
-  const currentUser = mockTeachers.find((t) => t.id === currentUserId) ?? null;
+  const currentUser = teachers.find((t) => t.id === currentUserId) ?? null;
   const expiryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   function clearExpiryTimer() {
@@ -74,7 +76,7 @@ export function MockAuthProvider({ children }: { children: ReactNode }) {
   function findMatches(name: string): Teacher[] {
     const normalized = name.trim().toLowerCase();
     if (!normalized) return [];
-    return mockTeachers.filter((t) => t.fullName.trim().toLowerCase() === normalized);
+    return teachers.filter((t) => t.fullName.trim().toLowerCase() === normalized);
   }
 
   function login(teacherId: string) {
@@ -91,14 +93,14 @@ export function MockAuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <MockAuthContext.Provider value={{ currentUser, findMatches, login, logout }}>
+    <AuthContext.Provider value={{ currentUser, teachersLoading, teachersError, findMatches, login, logout }}>
       {children}
-    </MockAuthContext.Provider>
+    </AuthContext.Provider>
   );
 }
 
-export function useMockAuth() {
-  const ctx = useContext(MockAuthContext);
-  if (!ctx) throw new Error("useMockAuth must be used within MockAuthProvider");
+export function useAuth() {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
 }

@@ -1,11 +1,13 @@
-import { useMemo, useState } from "react";
-import { useMockAuth } from "../context/MockAuthContext";
-import { mockAttendance, CURRENT_ACADEMIC_YEAR } from "../mocks/data";
+import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "../context/AuthContext";
+import { useStudents, useTeachers } from "../api/hooks";
+import { fetchAttendance, submitAttendance } from "../api/client";
+import { CURRENT_ACADEMIC_YEAR } from "../mocks/data";
 import {
   getAttendanceMarkingCapabilities,
   getAvailableClassSections,
   getRoster,
-} from "../mocks/attendanceMarkingApi";
+} from "../api/attendanceMarking";
 import type { AttendanceMark, AttendanceTargetType } from "../types/domain";
 
 function nextOrLastSunday(): string {
@@ -25,43 +27,95 @@ const statusStyles: Record<AttendanceMark, string> = {
 const unselectedStyle = "border-slate-300 text-slate-600 hover:bg-slate-50";
 
 export default function AttendanceMarking() {
-  const { currentUser: user } = useMockAuth();
+  const { currentUser: user } = useAuth();
+  const { data: teachers, loading: teachersLoading, error: teachersError } = useTeachers();
+  const { data: students, loading: studentsLoading, error: studentsError } = useStudents();
   const [selectedDate, setSelectedDate] = useState(nextOrLastSunday());
   const [saved, setSaved] = useState(false);
 
-  if (!user) return null;
-
-  // Everything below reads from this one "API response" - no role checks
-  // happen anywhere in this component. See mocks/attendanceMarkingApi.ts.
+  // Capabilities are pure role-derived UI config (no I/O); roster/sections
+  // are backed by the real teacher/student lists fetched above. See
+  // src/api/attendanceMarking.ts. `user` is briefly null only for the one
+  // render before AppLayout redirects to /login, but hooks must still run
+  // unconditionally every render, so the null case falls back to a
+  // throwaway role/roster that's never actually shown (see the `!user`
+  // bail-out below, placed after every hook call).
   const capabilities = useMemo(
-    () => getAttendanceMarkingCapabilities(user),
+    () => getAttendanceMarkingCapabilities(user?.role ?? "teacher"),
     [user]
   );
 
   const [targetType, setTargetType] = useState<AttendanceTargetType>(capabilities.defaultTargetType);
   const targetConfig = capabilities.perTargetType[targetType];
 
-  const availableSections = targetConfig.classSectionSelectorVisible
-    ? getAvailableClassSections(user, targetType)
+  const availableSections = user && targetConfig.classSectionSelectorVisible
+    ? getAvailableClassSections(user, targetType, students)
     : [];
   const [selectedSection, setSelectedSection] = useState(availableSections[0] ?? "");
 
-  const roster = getRoster(
-    user,
-    targetType,
-    targetConfig.classSectionSelectorVisible ? selectedSection : undefined
-  );
-
-  const existingMarks = useMemo(() => {
-    const marks: Record<string, AttendanceMark | undefined> = {};
-    for (const person of roster) {
-      const record = mockAttendance.find((a) => a.personId === person.id);
-      marks[person.id] = record?.data[selectedDate];
+  // `students` (and therefore availableSections) loads asynchronously, so
+  // the useState initializer above only ever sees the pre-fetch empty
+  // list. Once real sections arrive, adopt the first one unless the
+  // current selection is still valid.
+  useEffect(() => {
+    if (availableSections.length > 0 && !availableSections.includes(selectedSection)) {
+      setSelectedSection(availableSections[0]);
     }
-    return marks;
-  }, [roster, selectedDate]);
+  }, [availableSections, selectedSection]);
+
+  const roster = user
+    ? getRoster(
+        user,
+        targetType,
+        targetConfig.classSectionSelectorVisible ? selectedSection : undefined,
+        teachers,
+        students
+      )
+    : [];
+
+  const [existingMarks, setExistingMarks] = useState<Record<string, AttendanceMark | undefined>>({});
+  const [marksLoading, setMarksLoading] = useState(false);
+  const [marksError, setMarksError] = useState<string | null>(null);
+
+  // `roster` is a fresh array every render, so it can't be a dependency
+  // directly (the effect would refetch, setState, re-render, refetch...
+  // forever) - `rosterKey` gives it a stable identity to key off instead.
+  const rosterKey = roster.map((p) => p.id).join(",");
+
+  useEffect(() => {
+    if (roster.length === 0) {
+      setExistingMarks({});
+      return;
+    }
+    let cancelled = false;
+    setMarksLoading(true);
+    setMarksError(null);
+    fetchAttendance(roster.map((p) => p.id), CURRENT_ACADEMIC_YEAR)
+      .then((records) => {
+        if (cancelled) return;
+        const marks: Record<string, AttendanceMark | undefined> = {};
+        for (const person of roster) {
+          marks[person.id] = records.find((r) => r.personId === person.id)?.data[selectedDate];
+        }
+        setExistingMarks(marks);
+      })
+      .catch((err) => {
+        if (!cancelled) setMarksError(err instanceof Error ? err.message : "Failed to load attendance");
+      })
+      .finally(() => {
+        if (!cancelled) setMarksLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rosterKey, selectedDate]);
 
   const [draft, setDraft] = useState<Record<string, AttendanceMark>>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  if (!user) return null;
 
   function markFor(personId: string): AttendanceMark | undefined {
     return draft[personId] ?? existingMarks[personId];
@@ -83,7 +137,7 @@ export default function AttendanceMarking() {
     if (!user) return;
     setTargetType(next);
     const nextSections = capabilities.perTargetType[next].classSectionSelectorVisible
-      ? getAvailableClassSections(user, next)
+      ? getAvailableClassSections(user, next, students)
       : [];
     setSelectedSection(nextSections[0] ?? "");
     setDraft({});
@@ -102,16 +156,35 @@ export default function AttendanceMarking() {
     setSaved(false);
   }
 
+  if (teachersLoading || studentsLoading) {
+    return <p className="text-sm text-slate-500">Loading roster…</p>;
+  }
+  if (teachersError || studentsError) {
+    return <p className="text-sm text-rose-600">{teachersError ?? studentsError}</p>;
+  }
+
   const markedCount = roster.filter((p) => markFor(p.id) !== undefined).length;
 
   // Sunday check - real version will call the backend's is_working_day(),
   // this just mirrors the "day of week" half of that rule for the UI.
   const isSunday = new Date(selectedDate + "T00:00:00").getDay() === 0;
 
-  function handleSubmit() {
-    // Placeholder for the real call: one upsert-and-merge into `data`
-    // per person, e.g. PATCH /attendance { person_id, academic_year, date, mark }
-    setSaved(true);
+  async function handleSubmit() {
+    const marks = Object.entries(draft).map(([personId, mark]) => ({ personId, date: selectedDate, mark }));
+    if (marks.length === 0) return;
+
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      await submitAttendance(CURRENT_ACADEMIC_YEAR, marks);
+      setExistingMarks((prev) => ({ ...prev, ...draft }));
+      setDraft({});
+      setSaved(true);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Failed to save attendance");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -159,6 +232,12 @@ export default function AttendanceMarking() {
         </div>
       ) : (
         <>
+          {marksError && (
+            <div className="bg-rose-50 border border-rose-200 text-rose-700 rounded-md p-3 text-sm">
+              {marksError}
+            </div>
+          )}
+
           <div className="flex justify-end">
             <button
               onClick={markAllPresent}
@@ -206,16 +285,17 @@ export default function AttendanceMarking() {
 
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <span className="text-sm text-slate-500">
-              {markedCount} / {roster.length} marked · {CURRENT_ACADEMIC_YEAR}
+              {marksLoading ? "Loading existing marks…" : `${markedCount} / ${roster.length} marked`} · {CURRENT_ACADEMIC_YEAR}
             </span>
             <div className="flex items-center gap-3">
-              {saved && <span className="text-sm text-emerald-600">Saved</span>}
+              {submitError && <span className="text-sm text-rose-600">{submitError}</span>}
+              {saved && !submitError && <span className="text-sm text-emerald-600">Saved</span>}
               <button
                 onClick={handleSubmit}
-                disabled={roster.length === 0}
+                disabled={roster.length === 0 || submitting}
                 className="flex-1 sm:flex-none px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                Submit
+                {submitting ? "Saving…" : "Submit"}
               </button>
             </div>
           </div>

@@ -1,12 +1,23 @@
 import { useState } from "react";
-import { useMockAuth } from "../context/MockAuthContext";
-import { mockStudents, mockTeachers } from "../mocks/data";
+import { useAuth } from "../context/AuthContext";
+import { useStudents, useTeachers } from "../api/hooks";
+import type { Student, Teacher } from "../types/domain";
 import StudentsTable from "../components/StudentsTable";
 import TeachersTable from "../components/TeachersTable";
 
 export default function Dashboard() {
-  const { currentUser } = useMockAuth();
+  const { currentUser } = useAuth();
+  const { data: students, loading: studentsLoading, error: studentsError } = useStudents();
+  const { data: teachers, loading: teachersLoading, error: teachersError } = useTeachers();
+
   if (!currentUser) return null;
+
+  if (studentsLoading || teachersLoading) {
+    return <p className="text-sm text-slate-500">Loading dashboard…</p>;
+  }
+  if (studentsError || teachersError) {
+    return <p className="text-sm text-rose-600">{studentsError ?? teachersError}</p>;
+  }
 
   // Volunteers have the same access as the Superintendent - both get the
   // full school-wide view, not the narrower "your assigned sections" view
@@ -14,11 +25,11 @@ export default function Dashboard() {
   const hasBroadAccess = currentUser.role === "superintendent" || currentUser.role === "volunteer";
 
   if (hasBroadAccess) {
-    return <BroadOverview />;
+    return <BroadOverview students={students} teachers={teachers} />;
   }
 
   const mySections = [...new Set(
-    mockStudents.filter((s) => s.teacherIds.includes(currentUser.id)).map((s) => s.classSection)
+    students.filter((s) => s.teacherIds.includes(currentUser.id)).map((s) => s.classSection)
   )];
 
   return (
@@ -40,19 +51,19 @@ export default function Dashboard() {
   );
 }
 
-function BroadOverview() {
-  const allSections = [...new Set(mockStudents.map((s) => s.classSection))].sort();
+function BroadOverview({ students, teachers }: { students: Student[]; teachers: Teacher[] }) {
+  const allSections = [...new Set(students.map((s) => s.classSection))].sort();
   const [sectionFilter, setSectionFilter] = useState<string>(allSections[0] ?? "");
 
-  const filteredStudents = mockStudents.filter((s) => s.classSection === sectionFilter);
+  const filteredStudents = students.filter((s) => s.classSection === sectionFilter);
 
   return (
     <div className="space-y-8">
       <div className="space-y-4">
         <h1 className="text-lg sm:text-xl font-semibold text-slate-800">School-wide overview</h1>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-          <StatCard label="Total students" value={mockStudents.length} />
-          <StatCard label="Total staff" value={mockTeachers.length - 1} />
+          <StatCard label="Total students" value={students.length} />
+          <StatCard label="Total staff" value={teachers.length - 1} />
           <StatCard label="Today's attendance %" value="—" />
         </div>
         <p className="text-sm text-slate-500">
@@ -63,7 +74,7 @@ function BroadOverview() {
 
       <div className="space-y-3">
         <h2 className="text-base sm:text-lg font-semibold text-slate-800">Teachers</h2>
-        <TeachersTable teachers={mockTeachers} />
+        <TeachersTable teachers={teachers} />
       </div>
 
       <div className="space-y-3">

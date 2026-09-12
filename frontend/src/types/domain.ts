@@ -33,10 +33,7 @@ export interface AttendanceYearRecord {
 // The marking screen (who can mark attendance for whom, whether a target
 // type picker or class/section picker is shown, which statuses are
 // selectable) is driven entirely by this config object, not by role
-// checks inside the component. Today it's computed by a mock function
-// (see mocks/attendanceMarkingApi.ts); once a real backend exists, that
-// mock function is replaced by an actual API call returning the exact
-// same shape, and no component code needs to change.
+// checks inside the component. See src/api/attendanceMarking.ts.
 
 export type AttendanceTargetType = "teacher" | "student";
 

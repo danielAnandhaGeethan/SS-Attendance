@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { MockAuthProvider } from "./context/MockAuthContext";
+import { AuthProvider } from "./context/AuthContext";
 import AppLayout from "./layouts/AppLayout";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -9,7 +9,7 @@ import Teachers from "./pages/Teachers";
 
 export default function App() {
   return (
-    <MockAuthProvider>
+    <AuthProvider>
       <BrowserRouter>
         <Routes>
           <Route path="login" element={<Login />} />
@@ -21,6 +21,6 @@ export default function App() {
           </Route>
         </Routes>
       </BrowserRouter>
-    </MockAuthProvider>
+    </AuthProvider>
   );
 }

@@ -92,6 +92,51 @@ class AttendanceService:
 			"students": self.get_students(limit=limit),
 		}
 
+	def get_attendance(self, person_ids: list, academic_year: str):
+		"""Fetch existing marks for a set of people for one academic year."""
+		if not person_ids:
+			return []
+
+		resp = (
+			self.supabase.table("attendance")
+			.select("person_id,academic_year,data")
+			.in_("person_id", person_ids)
+			.eq("academic_year", academic_year)
+			.execute()
+		)
+		rows = resp.data if hasattr(resp, "data") else resp
+		return [
+			{"personId": r["person_id"], "academicYear": r["academic_year"], "data": r["data"]}
+			for r in (rows or [])
+		]
+
+	def upsert_marks(self, academic_year: str, marks: list):
+		"""marks: [{"person_id", "date", "mark"}, ...]. Merges into each
+		person's existing `data` blob rather than overwriting other dates."""
+		by_person = {}
+		for m in marks:
+			by_person.setdefault(m["person_id"], {})[m["date"]] = m["mark"]
+
+		for person_id, new_dates in by_person.items():
+			existing = (
+				self.supabase.table("attendance")
+				.select("id,data")
+				.eq("person_id", person_id)
+				.eq("academic_year", academic_year)
+				.limit(1)
+				.execute()
+			)
+			rows = existing.data if hasattr(existing, "data") else existing
+			if rows:
+				merged = {**rows[0]["data"], **new_dates}
+				self.supabase.table("attendance").update({"data": merged}).eq("id", rows[0]["id"]).execute()
+			else:
+				self.supabase.table("attendance").insert({
+					"person_id": person_id,
+					"academic_year": academic_year,
+					"data": new_dates,
+				}).execute()
+
 	def login(self, name: str):
 		"""Check teacher name and return valid/id response."""
 		if not name or not str(name).strip():
